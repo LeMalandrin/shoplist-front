@@ -1,0 +1,21 @@
+version: '3'
+services:
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+    environment:
+      NODE_ENV: development
+
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      NODE_ENV: production

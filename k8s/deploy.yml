@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-react-app-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-react-app-prod
+  template:
+    metadata:
+      labels:
+        app: my-react-app-prod
+    spec:
+      containers:
+        - name: my-react-app-prod
+          image: docker.io/votre-nom/my-react-app:latest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-react-app-prod-service
+spec:
+  selector:
+    app: my-react-app-prod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
