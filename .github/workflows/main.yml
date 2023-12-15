@@ -1,0 +1,40 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    needs: []  # Supprime toute dépendance par rapport à d'autres jobs dans le même workflow
+    runs-on: vps  # Utilise le runner nommé "vps"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Dev
+        if: ${{ github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev' }}
+        run: docker-compose -f docker-compose.yml up -d dev-service
+
+      - name: Deploy to Prod
+        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' }}
+        run: docker-compose -f docker-compose.yml up -d prod-service
