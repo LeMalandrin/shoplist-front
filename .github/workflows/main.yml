@@ -13,8 +13,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: self-hosted
-    needs: []  # Supprime toute dépendance par rapport à d'autres jobs dans le même workflow
-    runs-on: vps  # Utilise le runner nommé "vps"
 
     steps:
       - name: Checkout Repository
@@ -23,18 +21,38 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: 14
+          node-version: 20
+
+      - name: Update homepage in package.json
+        run: |
+          if [ "$GITHUB_REF" == "refs/heads/dev" ]; then
+            NEW_HOMEPAGE="shoplist-dev"
+          else
+            NEW_HOMEPAGE="shoplist"
+          fi
+          jq --arg NEW_HOMEPAGE "$NEW_HOMEPAGE" '. + { "homepage": $NEW_HOMEPAGE }' package.json > package.json.tmp
+          mv package.json.tmp package.json
 
       - name: Install Dependencies
         run: npm install
+    
+      - name: Build Dev
+        if: github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev'
+        run: npm run build:dev
 
-      - name: Build
-        run: npm run build
+      - name: Build Main
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main'
+        run: npm run build:main
 
       - name: Deploy to Dev
         if: ${{ github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev' }}
-        run: docker-compose -f docker-compose.yml up -d dev-service
+        run: |
+          mkdir -p /usr/share/nginx/html/shoplist-dev
+          cp -r build/. /usr/share/nginx/html/shoplist-dev
 
       - name: Deploy to Prod
         if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' }}
-        run: docker-compose -f docker-compose.yml up -d prod-service
+        run: |
+          whoami
+          mkdir -p /usr/share/nginx/html/shoplist
+          cp -r build/. /usr/share/nginx/html/shoplist
