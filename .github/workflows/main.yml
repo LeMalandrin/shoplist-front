@@ -8,10 +8,20 @@ on:
   pull_request:
     branches:
       - main
-      - dev
+      - dev  
+env:
+  CI: false
+  ENV_TYPE: ${{ github.base_ref == 'refs/heads/dev' || github.ref == 'refs/heads/dev' && 'DEV' || 'PROD' }}
+  FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY_${ ENV_TYPE } }}
+  FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN_${ ENV_TYPE } }}
+  FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL_${ ENV_TYPE } }}
+  FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID_${ ENV_TYPE } }}
+  FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET_${ ENV_TYPE } }}
+  FIREBASE_MESSAGING_SERVER_ID: ${{ secrets.FIREBASE_MESSAGING_SERVER_ID_${ ENV_TYPE } }}
+  FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_${ ENV_TYPE } }}
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: self-hosted
 
     steps:
@@ -35,24 +45,27 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-    
-      - name: Build Dev
+        
+      - name: Build Dev     
         if: github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev'
-        run: npm run build:dev
-
-      - name: Build Main
+        run: npm run build
+        
+      - name: Build Prod   
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main'
-        run: npm run build:main
+        run: npm run build
 
+  deploy-dev:
+    runs-on: self-hosted
+    needs: build
+    if: github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev'
+    steps:
       - name: Deploy to Dev
-        if: ${{ github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev' }}
-        run: |
-          mkdir -p /usr/share/nginx/html/shoplist-dev
-          cp -r build/. /usr/share/nginx/html/shoplist-dev
+        run: ./.github/scripts/deploy.sh dev
 
+  deploy-prod:
+    runs-on: self-hosted
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main'
+    steps:
       - name: Deploy to Prod
-        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' }}
-        run: |
-          whoami
-          mkdir -p /usr/share/nginx/html/shoplist
-          cp -r build/. /usr/share/nginx/html/shoplist
+        run: ./.github/scripts/deploy.sh prod
