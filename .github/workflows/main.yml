@@ -11,7 +11,7 @@ on:
       - dev
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: self-hosted
 
     steps:
@@ -35,7 +35,7 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-    
+
       - name: Build Dev
         if: github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev'
         run: npm run build:dev
@@ -44,15 +44,26 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main'
         run: npm run build:main
 
-      - name: Deploy to Dev
-        if: ${{ github.ref == 'refs/heads/dev' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/dev' }}
-        run: |
-          mkdir -p /usr/share/nginx/html/shoplist-dev
-          cp -r build/. /usr/share/nginx/html/shoplist-dev
+  deploy:
+    runs-on: self-hosted
 
+    needs: build
+
+    environment:
+      name: dev
+
+    steps:
+      - name: Deploy to Dev
+        run: ./.github/scripts/deploy.sh dev
+
+  deploy-prod:
+    runs-on: self-hosted
+
+    needs: build
+
+    environment:
+      name: prod
+
+    steps:
       - name: Deploy to Prod
-        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' }}
-        run: |
-          whoami
-          mkdir -p /usr/share/nginx/html/shoplist
-          cp -r build/. /usr/share/nginx/html/shoplist
+        run: ./.github/scripts/deploy.sh prod
